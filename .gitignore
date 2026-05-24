@@ -1,0 +1,54 @@
+# Virtual environment — managed by uv
+.venv/
+
+# Secrets — never commit
+.env
+
+# Generated TLS certificates
+certs/*.pem
+certs/*.crt
+certs/*.key
+
+# TLS session key log and Chrome profile — educational use, never commit
+# These files contain private key material for the demo session only.
+tlskeys/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Distribution / packaging
+dist/
+build/dist/
+*.egg-info/
+*.egg
+MANIFEST
+
+# PyInstaller
+*.spec.bak
+dist/
+
+# Test / coverage artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# macOS
+.DS_Store
+*.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

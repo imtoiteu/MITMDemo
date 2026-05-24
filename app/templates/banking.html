@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Bank Transfer — Security Awareness Demo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">🏦 Fake Bank Transfer Demo</h1>
+  <p class="page-subtitle">
+    Demonstrates how financial data is exposed over HTTP.
+    Wireshark filter: <code>tcp.port == {{ http_port }} &amp;&amp; http.request.method == "POST"</code>
+  </p>
+</div>
+
+{% if demo_mode == "HTTP" %}
+<div class="edu-alert edu-alert--danger" style="margin-bottom:1.5rem;">
+  <strong>⚠️ HTTP Mode</strong> — Recipient, account number, amount, and notes travel as plaintext.
+  Anyone on the network can see your financial transaction details.
+</div>
+{% else %}
+<div class="edu-alert edu-alert--success" style="margin-bottom:1.5rem;">
+  <strong>🔒 HTTPS Mode</strong> — All transfer fields are encrypted.
+  Network observers cannot read the amount, recipient, or account number.
+</div>
+{% endif %}
+
+<div class="banking-layout">
+
+  <!-- Transfer Form -->
+  <div class="banking-card">
+    <div class="bank-header">
+      <span class="bank-logo-icon">🏦</span>
+      <div>
+        <div class="bank-name">DemoBank International</div>
+        <div class="bank-tagline">Demo Wire Transfer — Training Only</div>
+      </div>
+    </div>
+
+    {% if error %}
+    <div class="form-error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if result %}
+    <!-- Confirmation screen -->
+    <div class="transfer-confirm" id="transfer-confirm">
+      <div class="confirm-icon">✅</div>
+      <h2 class="confirm-title">Transfer Submitted (Demo)</h2>
+      <div class="confirm-grid">
+        <div class="confirm-row">
+          <span class="confirm-label">Recipient</span>
+          <span class="confirm-value">{{ result.recipient }}</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Account No.</span>
+          <span class="confirm-value">{{ result.account_number or "N/A" }}</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Amount</span>
+          <span class="confirm-value confirm-value--amount">${{ "%.2f" | format(result.amount) }}</span>
+        </div>
+        <div class="confirm-row">
+          <span class="confirm-label">Note</span>
+          <span class="confirm-value">{{ result.note or "—" }}</span>
+        </div>
+      </div>
+      {% if demo_mode == "HTTP" %}
+      <div class="capture-box" style="margin-top:1.5rem;">
+        <strong>📡 POST body visible in Wireshark:</strong>
+        <pre>recipient={{ result.recipient }}&amp;account_number={{ result.account_number }}&amp;amount={{ result.amount }}&amp;note={{ result.note }}</pre>
+      </div>
+      {% endif %}
+      <a href="{{ url_for('banking.transfer') }}" class="btn btn--primary" style="margin-top:1rem;" id="btn-new-transfer">
+        New Transfer
+      </a>
+    </div>
+
+    {% else %}
+    <!-- Transfer form -->
+    <form method="POST" action="{{ url_for('banking.transfer') }}" id="banking-form" autocomplete="off">
+      <div class="form-group">
+        <label for="recipient" class="form-label">Recipient Full Name <span class="required">*</span></label>
+        <input type="text" id="recipient" name="recipient" class="form-input"
+               placeholder="e.g. John Smith" required maxlength="64" />
+      </div>
+
+      <div class="form-group">
+        <label for="account_number" class="form-label">Recipient Account Number</label>
+        <input type="text" id="account_number" name="account_number" class="form-input"
+               placeholder="e.g. 1234-5678-9012" maxlength="32" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex:1">
+          <label for="amount" class="form-label">Amount (USD) <span class="required">*</span></label>
+          <div class="input-wrapper">
+            <span class="input-prefix">$</span>
+            <input type="number" id="amount" name="amount" class="form-input input--prefixed"
+                   placeholder="0.00" min="0.01" step="0.01" required />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="note" class="form-label">Transfer Note / Memo</label>
+        <input type="text" id="note" name="note" class="form-input"
+               placeholder="e.g. Invoice #2024-001" maxlength="256" />
+      </div>
+
+      <button type="submit" class="btn btn--primary btn--full" id="btn-transfer">
+        🏦 Submit Transfer
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Educational panel -->
+  <div class="banking-edu-panel">
+    <h3>💸 What Leaks Over HTTP</h3>
+    <div class="packet-preview" id="bank-packet-preview">
+      {% if demo_mode == "HTTP" %}
+      <div class="packet-header">HTTP POST /banking/ — Plaintext</div>
+      <pre class="packet-body">POST /banking/ HTTP/1.1
+Host: 127.0.0.1:{{ http_port }}
+Content-Type: application/x-www-form-urlencoded
+
+recipient=John+Smith
+&amp;account_number=1234-5678-9012
+&amp;amount=5000.00
+&amp;note=Invoice+%232024-001</pre>
+      {% else %}
+      <div class="packet-header packet-header--secure">TLS Record — Encrypted</div>
+      <pre class="packet-body">Content Type: Application Data (23)
+Version: TLS 1.3
+Length: 312 bytes
+Encrypted Data: [opaque bytes]
+← Recipient, amount, account number
+   are completely hidden</pre>
+      {% endif %}
+    </div>
+
+    <h3 style="margin-top:1.5rem;">⚠️ Real-World Risk</h3>
+    <ul class="edu-list">
+      <li>An attacker on the same coffee-shop WiFi can capture the exact transfer amount and recipient account.</li>
+      <li>They can modify the POST body (MITM) to change the recipient before the server processes it.</li>
+      <li>HTTPS prevents both eavesdropping and modification — the browser and server verify the TLS certificate.</li>
+      <li>Always look for the 🔒 padlock in your browser before entering financial information.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Security Awareness Training Demo — local HTTP vs HTTPS comparison lab" />
+  <title>{% block title %}Security Awareness Demo{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+
+  <!-- ===== TRAINING BANNER ===== -->
+  <div class="training-banner" id="training-banner">
+    <div class="banner-inner">
+      <span class="banner-icon">🎓</span>
+      <span class="banner-text">{{ demo_label | upper }} — LOCAL LAB ENVIRONMENT ONLY</span>
+      <span class="banner-icon">🎓</span>
+    </div>
+  </div>
+
+  <!-- ===== MODE RIBBON ===== -->
+  <div class="mode-ribbon mode-ribbon--{{ demo_mode | lower }}" id="mode-ribbon">
+    {% if demo_mode == "HTTP" %}
+      <span class="mode-icon">⚠️</span>
+      <span>Running over <strong>HTTP (UNENCRYPTED)</strong> — port {{ http_port }} — Traffic is visible in plaintext</span>
+    {% else %}
+      <span class="mode-icon">🔒</span>
+      <span>Running over <strong>HTTPS (TLS ENCRYPTED)</strong> — port {{ https_port }} — Traffic is encrypted</span>
+    {% endif %}
+  </div>
+
+  <!-- ===== LAYOUT ===== -->
+  <div class="layout">
+
+    <!-- Sidebar Nav -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <span class="logo-icon">🛡️</span>
+        <span class="logo-text">SecDemo</span>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Demo navigation">
+        <a href="{{ url_for('home.index') }}" class="nav-link {% if request.endpoint == 'home.index' %}active{% endif %}">
+          <span class="nav-icon">🏠</span> Home
+        </a>
+        <div class="nav-section-label">Demo Scenarios</div>
+        <a href="{{ url_for('auth.login') }}" class="nav-link {% if 'auth' in (request.endpoint or '') %}active{% endif %}">
+          <span class="nav-icon">🔑</span> Login Page
+        </a>
+        <a href="{{ url_for('chat.chat_home') }}" class="nav-link {% if 'chat' in (request.endpoint or '') %}active{% endif %}">
+          <span class="nav-icon">💬</span> Chat Messages
+        </a>
+        <a href="{{ url_for('banking.transfer') }}" class="nav-link {% if 'banking' in (request.endpoint or '') %}active{% endif %}">
+          <span class="nav-icon">🏦</span> Bank Transfer
+        </a>
+        <a href="{{ url_for('upload.upload_file') }}" class="nav-link {% if 'upload' in (request.endpoint or '') %}active{% endif %}">
+          <span class="nav-icon">📁</span> File Upload
+        </a>
+
+        <div class="nav-section-label">Compare Modes</div>
+        <a href="http://127.0.0.1:{{ http_port }}/" class="nav-link nav-link--http" target="_blank" rel="noopener">
+          <span class="nav-icon">⚠️</span> HTTP Mode
+        </a>
+        <a href="https://127.0.0.1:{{ https_port }}/" class="nav-link nav-link--https" target="_blank" rel="noopener">
+          <span class="nav-icon">🔒</span> HTTPS Mode
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        {% if session.get('logged_in') %}
+          <div class="session-info">
+            <span class="session-icon">👤</span>
+            <span>{{ session.get('username') }}</span>
+            <a href="{{ url_for('auth.logout') }}" class="logout-link">Logout</a>
+          </div>
+        {% endif %}
+        <div class="sidebar-version">v1.0 · Lab Only</div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content" id="main-content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash flash--{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+  </div><!-- /.layout -->
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

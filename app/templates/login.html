@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Login — Security Awareness Demo{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+
+  <!-- Left: Educational Panel -->
+  <div class="auth-edu-panel">
+    <h2>🔑 Credential Exposure Demo</h2>
+
+    {% if demo_mode == "HTTP" %}
+    <div class="edu-alert edu-alert--danger">
+      <strong>⚠️ HTTP Mode Active</strong>
+      <p>Your login credentials will be sent in <strong>plaintext</strong> over the network.
+         Open Wireshark and use the filter below to intercept them.</p>
+    </div>
+    <div class="edu-filter-box">
+      <span class="edu-filter-label">Wireshark filter</span>
+      <code id="ws-login-filter">tcp.port == {{ http_port }} &amp;&amp; http.request.method == "POST"</code>
+    </div>
+    <ol class="edu-steps">
+      <li>Start Wireshark on the <strong>loopback</strong> interface</li>
+      <li>Apply the filter above</li>
+      <li>Submit the login form below</li>
+      <li>Find the POST packet — right-click → <strong>Follow → HTTP Stream</strong></li>
+      <li>Read the <code>username=</code> and <code>password=</code> values in plaintext</li>
+    </ol>
+    {% else %}
+    <div class="edu-alert edu-alert--success">
+      <strong>🔒 HTTPS Mode Active</strong>
+      <p>Your credentials are encrypted in a TLS record.
+         Wireshark will only show opaque ciphertext — nothing is readable.</p>
+    </div>
+    <div class="edu-filter-box">
+      <span class="edu-filter-label">Wireshark filter (shows only encrypted bytes)</span>
+      <code id="ws-login-filter">tcp.port == {{ https_port }}</code>
+    </div>
+    <ol class="edu-steps">
+      <li>Start Wireshark on loopback</li>
+      <li>Apply the filter above</li>
+      <li>Submit the login form</li>
+      <li>Notice: only TLS Application Data records — <strong>no plaintext visible</strong></li>
+    </ol>
+    {% endif %}
+
+    <!-- Demo credentials reference -->
+    <div class="demo-creds-box">
+      <span class="demo-creds-title">📋 Demo Credentials (use any)</span>
+      <table class="creds-table">
+        <thead><tr><th>Username</th><th>Password</th></tr></thead>
+        <tbody>
+          {% for user, pw in demo_users.items() %}
+          <tr>
+            <td><code>{{ user }}</code></td>
+            <td><code>{{ pw }}</code></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right: Login Form -->
+  <div class="auth-form-panel">
+    <div class="auth-form-card">
+      <!-- Fake bank logo for realism -->
+      <div class="auth-logo">
+        <span class="auth-logo-icon">🏦</span>
+        <span class="auth-logo-text">SecureBank<sup>®</sup></span>
+      </div>
+      <h1 class="auth-title">Sign In</h1>
+      <p class="auth-subtitle">Enter your online banking credentials</p>
+
+      {% if error %}
+      <div class="form-error" role="alert">{{ error }}</div>
+      {% endif %}
+
+      {% if submitted and submitted.username %}
+      <div class="capture-box" id="capture-box">
+        <strong>📡 Captured POST body (what Wireshark sees over HTTP):</strong>
+        <pre id="captured-data">username={{ submitted.username }}&amp;password={{ submitted.password }}</pre>
+      </div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('auth.login') }}" id="login-form" autocomplete="off">
+        <div class="form-group">
+          <label for="username" class="form-label">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            class="form-input"
+            placeholder="e.g. alice"
+            value="{{ submitted.get('username', '') if submitted else '' }}"
+            autocomplete="username"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-wrapper">
+            <input
+              type="password"
+              id="password"
+              name="password"
+              class="form-input"
+              placeholder="Enter password"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" class="toggle-pw" id="toggle-pw" aria-label="Toggle password visibility">👁</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--full" id="btn-login">
+          Sign In
+        </button>
+      </form>
+
+      <div class="auth-footer-note">
+        This is a demo environment. No real banking data is used.
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

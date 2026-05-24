@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Security Awareness Demo — Home{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Security Awareness Training</h1>
+  <p class="page-subtitle">
+    A local lab for demonstrating HTTP vs HTTPS traffic interception.
+    Use Wireshark on your local interface to observe the difference.
+  </p>
+</div>
+
+<!-- Current Mode Card -->
+<div class="mode-card mode-card--{{ demo_mode | lower }}">
+  {% if demo_mode == "HTTP" %}
+    <div class="mode-card-icon">⚠️</div>
+    <div class="mode-card-body">
+      <h2 class="mode-card-title">You are on HTTP (Unencrypted)</h2>
+      <p>All traffic between your browser and this server is <strong>plaintext</strong>.
+         Any device on the same network can intercept and read everything you send.</p>
+      <a href="https://127.0.0.1:{{ https_port }}/" class="btn btn--success" target="_blank" rel="noopener">
+        Switch to HTTPS →
+      </a>
+    </div>
+  {% else %}
+    <div class="mode-card-icon">🔒</div>
+    <div class="mode-card-body">
+      <h2 class="mode-card-title">You are on HTTPS (TLS Encrypted)</h2>
+      <p>Traffic is encrypted with TLS. An attacker capturing packets will only
+         see ciphertext — they cannot read your credentials or messages.</p>
+      <a href="http://127.0.0.1:{{ http_port }}/" class="btn btn--danger" target="_blank" rel="noopener">
+        Switch to HTTP →
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Demo Scenario Cards -->
+<h2 class="section-title">Demo Scenarios</h2>
+<div class="card-grid">
+
+  <a href="{{ url_for('auth.login') }}" class="scenario-card" id="card-login">
+    <div class="scenario-icon">🔑</div>
+    <h3>Login Page</h3>
+    <p>Submit a username &amp; password. Over HTTP, Wireshark shows the credentials in the POST body in plaintext.</p>
+    <span class="scenario-tag scenario-tag--danger">Credential Exposure</span>
+  </a>
+
+  <a href="{{ url_for('chat.chat_home') }}" class="scenario-card" id="card-chat">
+    <div class="scenario-icon">💬</div>
+    <h3>Chat Messages</h3>
+    <p>Alice &amp; Bob exchange messages. Over HTTP every message body is visible to any network observer.</p>
+    <span class="scenario-tag scenario-tag--warning">Message Interception</span>
+  </a>
+
+  <a href="{{ url_for('banking.transfer') }}" class="scenario-card" id="card-banking">
+    <div class="scenario-icon">🏦</div>
+    <h3>Bank Transfer</h3>
+    <p>Submit a fake wire transfer. Over HTTP the recipient, account number, amount and note are all exposed.</p>
+    <span class="scenario-tag scenario-tag--danger">Financial Data Leak</span>
+  </a>
+
+  <a href="{{ url_for('upload.upload_file') }}" class="scenario-card" id="card-upload">
+    <div class="scenario-icon">📁</div>
+    <h3>File Upload</h3>
+    <p>Upload any file. Over HTTP the file content travels as plaintext multipart data, readable in Wireshark.</p>
+    <span class="scenario-tag scenario-tag--warning">File Interception</span>
+  </a>
+
+</div>
+
+<!-- Wireshark Quick Reference -->
+<h2 class="section-title">🦈 Wireshark Quick Reference</h2>
+<div class="wireshark-panel">
+  <div class="wireshark-grid">
+    <div class="ws-item">
+      <span class="ws-label">Capture all HTTP traffic</span>
+      <code class="ws-filter" id="ws-1">tcp.port == {{ http_port }}</code>
+    </div>
+    <div class="ws-item">
+      <span class="ws-label">Only POST requests (credentials, forms)</span>
+      <code class="ws-filter" id="ws-2">tcp.port == {{ http_port }} &amp;&amp; http.request.method == "POST"</code>
+    </div>
+    <div class="ws-item">
+      <span class="ws-label">See cookies in requests</span>
+      <code class="ws-filter" id="ws-3">http.cookie</code>
+    </div>
+    <div class="ws-item">
+      <span class="ws-label">HTTPS (encrypted — nothing readable)</span>
+      <code class="ws-filter" id="ws-4">tcp.port == {{ https_port }}</code>
+    </div>
+    <div class="ws-item">
+      <span class="ws-label">Chat messages (follow TCP stream)</span>
+      <code class="ws-filter" id="ws-5">tcp.port == {{ http_port }} &amp;&amp; http contains "content"</code>
+    </div>
+  </div>
+  <p class="ws-tip">💡 Tip: Right-click any HTTP packet → <strong>Follow → HTTP Stream</strong> to see the full request body.</p>
+</div>
+
+<!-- Demo Walkthrough Steps -->
+<h2 class="section-title">📋 Demo Walkthrough</h2>
+<ol class="walkthrough-list">
+  <li>
+    <strong>Start Wireshark</strong> — Select your loopback interface
+    (<code>lo0</code> on macOS / <code>Loopback Adapter</code> on Windows).
+  </li>
+  <li>
+    <strong>Apply filter</strong> — Enter <code>tcp.port == {{ http_port }}</code> in Wireshark's filter bar.
+  </li>
+  <li>
+    <strong>Open the Login page</strong> — Go to
+    <a href="{{ url_for('auth.login') }}">Login</a> and submit any demo credentials.
+  </li>
+  <li>
+    <strong>Inspect the packet</strong> — Find the HTTP POST in Wireshark.
+    Right-click → Follow → HTTP Stream. You will see the username and password in plaintext.
+  </li>
+  <li>
+    <strong>Switch to HTTPS</strong> — Open
+    <a href="https://127.0.0.1:{{ https_port }}/auth/login" target="_blank" rel="noopener">https://127.0.0.1:{{ https_port }}/auth/login</a>
+    and repeat step 3.
+  </li>
+  <li>
+    <strong>Compare</strong> — Change the filter to <code>tcp.port == {{ https_port }}</code>.
+    You will see only encrypted TLS records — no readable content.
+  </li>
+  <li>
+    <strong>Repeat for Chat and Banking</strong> — Demonstrate that all form data
+    is exposed over HTTP and protected over HTTPS.
+  </li>
+</ol>
+{% endblock %}

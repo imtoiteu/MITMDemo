@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}File Upload — Security Awareness Demo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">📁 File Upload Interception Demo</h1>
+  <p class="page-subtitle">
+    Demonstrates how file content is exposed in multipart HTTP traffic.
+    Wireshark filter: <code>tcp.port == {{ http_port }}</code> → Follow TCP Stream
+  </p>
+</div>
+
+{% if demo_mode == "HTTP" %}
+<div class="edu-alert edu-alert--danger" style="margin-bottom:1.5rem;">
+  <strong>⚠️ HTTP Mode</strong> — File contents travel as
+  <code>multipart/form-data</code> in plaintext. Wireshark can
+  reconstruct the entire file from the TCP stream.
+</div>
+{% else %}
+<div class="edu-alert edu-alert--success" style="margin-bottom:1.5rem;">
+  <strong>🔒 HTTPS Mode</strong> — File data is encrypted inside TLS.
+  Wireshark shows only opaque ciphertext — file contents are completely hidden.
+</div>
+{% endif %}
+
+<div class="upload-layout">
+
+  <!-- Upload Form -->
+  <div class="upload-card">
+    <div class="upload-zone" id="upload-zone">
+      <div class="upload-zone-icon" id="upload-icon">📂</div>
+      <p class="upload-zone-text">Drag &amp; drop a file here, or click to browse</p>
+      <p class="upload-zone-sub">Max 16 MB — file is <strong>never saved</strong>, only inspected for demo</p>
+    </div>
+
+    {% if error %}
+    <div class="form-error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('upload.upload_file') }}"
+          enctype="multipart/form-data" id="upload-form">
+
+      <input type="file" name="file" id="file-input" class="file-input-hidden"
+             aria-label="Choose file to upload" required />
+
+      <div class="selected-file" id="selected-file" style="display:none;">
+        <span class="selected-icon">📄</span>
+        <span class="selected-name" id="selected-name"></span>
+        <span class="selected-size" id="selected-size"></span>
+      </div>
+
+      <button type="submit" class="btn btn--primary btn--full" id="btn-upload">
+        📤 Upload File (Demo)
+      </button>
+    </form>
+
+    {% if result %}
+    <div class="upload-result" id="upload-result">
+      <div class="result-icon">✅</div>
+      <h3>File Received (Demo Only)</h3>
+      <div class="result-meta">
+        <div class="result-row">
+          <span class="result-label">Filename</span>
+          <code class="result-value">{{ result.filename }}</code>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Size</span>
+          <span class="result-value">{{ result.size_bytes | filesizeformat if result.size_bytes > 1024 else result.size_bytes ~ " bytes" }}</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">MIME type</span>
+          <code class="result-value">{{ result.mime_type }}</code>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Stored on disk?</span>
+          <span class="result-value result-value--safe">❌ No — discarded immediately</span>
+        </div>
+      </div>
+      {{ result.message }}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Educational panel -->
+  <div class="upload-edu-panel">
+    <h3>🦈 How Wireshark Sees It</h3>
+    {% if demo_mode == "HTTP" %}
+    <div class="packet-preview">
+      <div class="packet-header">HTTP POST multipart — Plaintext</div>
+      <pre class="packet-body">POST /upload/ HTTP/1.1
+Host: 127.0.0.1:{{ http_port }}
+Content-Type: multipart/form-data; boundary=----Boundary123
+
+------Boundary123
+Content-Disposition: form-data; name="file"; filename="secret.txt"
+Content-Type: text/plain
+
+This is the SECRET file content.
+Wireshark can read every byte.
+------Boundary123--</pre>
+    </div>
+    <p class="edu-note">
+      The raw file bytes appear inside the multipart body.
+      For text files, they are immediately readable.
+      Binary files (images, PDFs) can be exported using
+      Wireshark's <strong>File → Export Objects → HTTP</strong>.
+    </p>
+    {% else %}
+    <div class="packet-preview packet-preview--encrypted">
+      <div class="packet-header">TLS Application Data — Encrypted</div>
+      <pre class="packet-body">17 03 03 04 7f 3a c8 d1 9e f2 ...
+[opaque TLS ciphertext]
+← Filename, file contents,
+  MIME type all hidden</pre>
+    </div>
+    <p class="edu-note">
+      Over HTTPS the entire multipart body — including filename and file content —
+      is encrypted. The packet capture reveals nothing about the uploaded file.
+    </p>
+    {% endif %}
+
+    <h3 style="margin-top:1.5rem;">📌 Key Takeaways</h3>
+    <ul class="edu-list">
+      <li>Over HTTP, <strong>every byte</strong> of an uploaded file is visible to a network observer.</li>
+      <li>This includes text files, images, PDFs, and sensitive documents.</li>
+      <li>Wireshark's <em>Export Objects</em> feature can reconstruct and save the file from the capture.</li>
+      <li>HTTPS (TLS 1.3) encrypts both the file content and its metadata (filename, type, size).</li>
+      <li>Always use HTTPS for any file or form upload — especially on public networks.</li>
+    </ul>
+  </div>
+
+</div>
+{% endblock %}

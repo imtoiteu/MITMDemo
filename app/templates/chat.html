@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Chat — Security Awareness Demo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">💬 Chat Message Interception</h1>
+  <p class="page-subtitle">
+    Alice &amp; Bob are chatting. Over HTTP, every message is visible in plaintext.
+    Try Wireshark filter: <code>tcp.port == {{ http_port }}</code>
+  </p>
+</div>
+
+{% if demo_mode == "HTTP" %}
+<div class="edu-alert edu-alert--danger" style="margin-bottom:1.5rem;">
+  <strong>⚠️ HTTP Mode</strong> — Messages below are transmitted as plaintext.
+  A network observer can read every word.
+</div>
+{% else %}
+<div class="edu-alert edu-alert--success" style="margin-bottom:1.5rem;">
+  <strong>🔒 HTTPS Mode</strong> — Messages are encrypted.
+  Wireshark shows only opaque TLS records.
+</div>
+{% endif %}
+
+<div class="chat-layout">
+
+  <!-- Chat Window -->
+  <div class="chat-window" id="chat-window">
+    <div class="chat-header">
+      <span class="chat-header-icon">💬</span>
+      <span>SecureChat — Demo Channel</span>
+      <form method="POST" action="{{ url_for('chat.reset_chat') }}" class="reset-form" id="reset-form">
+        <button type="submit" class="btn btn--ghost btn--sm" id="btn-reset-chat">🔄 Reset</button>
+      </form>
+    </div>
+
+    <div class="chat-messages" id="chat-messages">
+      {% for msg in messages %}
+      <div class="chat-msg chat-msg--{{ 'alice' if msg.sender == 'Alice' else ('bob' if msg.sender == 'Bob' else 'other') }}" id="msg-{{ loop.index }}">
+        <div class="chat-bubble">
+          <span class="chat-sender">{{ msg.sender }}</span>
+          <p class="chat-text">{{ msg.content }}</p>
+          <span class="chat-time">{{ msg.timestamp.strftime('%H:%M') }}</span>
+        </div>
+      </div>
+      {% else %}
+      <div class="chat-empty">No messages yet. Start the conversation!</div>
+      {% endfor %}
+    </div>
+
+    <form method="POST" action="{{ url_for('chat.send_message') }}" class="chat-form" id="chat-send-form">
+      <select name="sender" class="form-select" id="chat-sender" aria-label="Select sender">
+        <option value="Alice">Alice</option>
+        <option value="Bob">Bob</option>
+        <option value="Eve">Eve (attacker)</option>
+        <option value="Student">Student</option>
+      </select>
+      <input
+        type="text"
+        name="content"
+        class="form-input chat-input"
+        id="chat-input"
+        placeholder="Type a message… (it will be sniffable over HTTP)"
+        maxlength="512"
+        required
+        autocomplete="off"
+      />
+      <button type="submit" class="btn btn--primary" id="btn-send-chat">Send</button>
+    </form>
+  </div>
+
+  <!-- Educational sidebar -->
+  <div class="chat-edu-panel">
+    <h3>🦈 What Wireshark Sees</h3>
+
+    {% if demo_mode == "HTTP" %}
+    <div class="packet-preview" id="packet-preview">
+      <div class="packet-header">HTTP POST /chat/send</div>
+      <pre class="packet-body">POST /chat/send HTTP/1.1
+Host: 127.0.0.1:{{ http_port }}
+Content-Type: application/x-www-form-urlencoded
+Cookie: session=&lt;token&gt;
+
+sender=Alice&amp;content=Hey+Bob!+Did+you+get+the+files%3F</pre>
+    </div>
+    <p class="edu-note">
+      Every field — sender name, message content, and your session cookie —
+      is visible in the raw packet capture above.
+    </p>
+    {% else %}
+    <div class="packet-preview packet-preview--encrypted">
+      <div class="packet-header">TLS Application Data (encrypted)</div>
+      <pre class="packet-body">17 03 03 00 28 a5 f2 3c 8d 2e b9 44 7f 6a
+c1 09 3d e8 52 ab 71 fd 0c 88 4b 37 2a 1e
+[...] ← Unreadable ciphertext</pre>
+    </div>
+    <p class="edu-note">
+      Over HTTPS, Wireshark can only see TLS record headers.
+      The content is completely unreadable without the private key.
+    </p>
+    {% endif %}
+
+    <h3 style="margin-top:1.5rem;">🔐 Key Concepts</h3>
+    <ul class="edu-list">
+      <li><strong>Session Hijacking:</strong> If an attacker captures your session cookie over HTTP, they can impersonate you without knowing your password.</li>
+      <li><strong>Message Interception:</strong> Every chat message is a separate HTTP request — all readable.</li>
+      <li><strong>TLS Protection:</strong> HTTPS wraps the entire HTTP conversation in encryption — sender, content, and cookies are all hidden.</li>
+    </ul>
+  </div>
+
+</div>
+{% endblock %}
